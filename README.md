@@ -20,18 +20,6 @@ La variable objectiu (Price_range) té quatre classes:
 
 3 → Molt alt
 
-Aquest projecte segueix un flux complet de Machine Learning:
-
-Exploració de dades (EDA)
-
-Preprocessament
-
-Entrenament de models
-
-Avaluació del rendiment
-
-Conclusions i interpretació de resultats
-
 ### 2. Dataset
 
 El dataset conté les següents característiques:
