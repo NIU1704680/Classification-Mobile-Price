@@ -2,7 +2,7 @@
 
 Aquest projecte té com a objectiu desenvolupar un classificador de preus de telèfons mòbils basat en diferents característiques tècniques del dispositiu. Utilitza tècniques d’anàlisi de dades, preprocessament, i diversos algoritmes de Machine Learning per predir la categoria de preu d’un mòbil.
 
-1. Descripció del projecte
+### 1. Descripció del projecte
 
 L’objectiu principal és crear un model capaç de predir la categoria de preu d’un telèfon mòbil utilitzant com a entrada les seves especificacions de hardware (RAM, bateria, càmera, resolució, etc.).
 
@@ -32,7 +32,7 @@ Avaluació del rendiment
 
 Conclusions i interpretació de resultats
 
-2. Dataset
+### 2. Dataset
 
 El dataset conté les següents característiques:
 
