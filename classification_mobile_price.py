@@ -8,16 +8,15 @@ Original file is located at
 
 # Mobile Price Classification
 
-### Objetivo del proyecto:
+## 1. Objetivo del proyecto:
 
 El objetivo de este proyecto es crear un clasificador de precios de teléfonos móviles en función de sus diferentes características técnicas (RAM, batería, cámara, almacenamiento, etc.). Usaremos el dataset Mobile Price Classification de Kaggle, el cual contiene múltiples atributos de hardware y una etiqueta que clasifica cada móvil en una de cuatro categorías de precio:
 
 https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification
-"""
 
+## 2. Dataset:
 
-
-"""### Dataset:
+El dataset contiene un total de 21 atributs, explicados a continuacion:
 
 - ID: ID del producte (valor enter)
 
@@ -61,5 +60,204 @@ https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification
 
 - Wifi: si té connexió WiFi (valor booleà: 0 = no, 1 = sí)
 
+Por ultimo encontrabos nuestro atribujo objetivo (tarjet), el cual el modelo tendrá que predecir:
+
 - Price_range: categoria de preu (0 = baix, 1 = mitjà, 2 = alt, 3 = molt alt)
+
+## 3. Librerias utilizadas:
 """
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, LabelEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import precision_recall_curve, auc, roc_curve
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
+
+"""## 4. Analisis del dataset:
+
+### Carga del dataset:
+"""
+
+train = pd.read_csv('train.csv')
+test = pd.read_csv('test.csv')
+
+"""### Primero miraremos que columnas tenemos y cuantas (utilizado para la explicación anterior del dataset). Para ello usaremos el len():"""
+
+print("Nombre d'atributs:", len(train.columns))
+print("Nombre d'atributs:", train.columns)
+
+"""### Necesitamos hacer un analisis inicial de Nans. No sabemos si el dataset actual contiene Nans, por lo tanto usaremos info() que nos dirá cuantos valores rellenados tiene cada columna:"""
+
+print(train.info())
+
+"""Como podeos ver cada columna contiene 2000 valores rellenados, por lo tanto no hay Nans y no es necesario hacer un tratamiento de estos.
+
+### Ahora para saber el tipo de valores que contiene cada una de las columnas utilizamos .dtypes y head():
+"""
+
+print(train.dtypes)
+print(train.head())
+
+"""### Para saber si es necesario normalizar los datos necesitamos saber el rango de valores que tiene cada columna. Si hay rangos muy diferentes necesitaremos hacer esta normalizacion:"""
+
+print(train.describe())
+
+"""Para verlo mas claro utilizamos un grafico:"""
+
+# Calcular medias de todos los atributos excepto la clase
+means = train.drop(columns=["price_range"]).mean()
+
+# Gráfico
+plt.figure(figsize=(14,6))
+means.plot(kind="bar")
+plt.title("Media de cada atributo del dataset")
+plt.xlabel("Atributos")
+plt.ylabel("Valor medio")
+plt.xticks(rotation=45, ha="right")
+plt.tight_layout()
+plt.show()
+
+"""## 5. Tratamiento de datos:
+
+### Comenzaremos separando el atributo objetivo del resto:
+"""
+
+X = train.drop(['price_range'], axis=1)
+y = train['price_range']
+
+"""### Para ver como normalizar los datos haremos una prueba con tres tipos de normalizacion:"""
+
+#Comparación de diferentes técnicas de normalización y estandarización
+
+# Variables numericas con rangos muy diferentes
+data = train[['ram', 'mobile_wt']]
+
+# Escaladores
+scalers = {
+    "Original": data,
+    "StandardScaler": pd.DataFrame(StandardScaler().fit_transform(data), columns=data.columns),
+    "MinMaxScaler": pd.DataFrame(MinMaxScaler().fit_transform(data), columns=data.columns),
+    "RobustScaler": pd.DataFrame(RobustScaler().fit_transform(data), columns=data.columns),
+}
+
+# Visualización comparativa
+plt.figure(figsize=(12, 6))
+
+for i, (name, scaled) in enumerate(scalers.items(), 1):
+    plt.subplot(2, 2, i)
+    sns.kdeplot(scaled['ram'], fill=True, label='ram', alpha=0.5)
+    sns.kdeplot(scaled['mobile_wt'], fill=True, label='mobile_wt', alpha=0.5)
+    plt.title(name)
+    plt.legend()
+
+plt.tight_layout()
+plt.show()
+
+"""Despues de ver que tanto RobustScaler, MinMaxScaler y StandardScaler dan valores muy parecidos nos quedaremos con RobustScaler.
+
+### Normalizamos los datos:
+"""
+
+# Dividir los datos antes de escalar para evitar Data Leakage
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+
+# Aplicar RobustScaler
+scaler = RobustScaler()
+X_train_scaled = scaler.fit_transform(X_train) # Ajustar el escalador solo con el conjunto de entrenamiento (el fit sirve para que aprenda parámetros de los datos de train)
+X_test_scaled = scaler.transform(X_test) # Aplicar la misma transformación al conjunto de prueba (Transform solamente)
+
+"""## 6. Primer modelo: LogisticRegression
+
+### He decidido elegir como primer modelo la Regression logistica por su sencillez. Para su uso utilizaremos también Cross Validation:
+"""
+
+# Cross-validation simple
+model = LogisticRegression(max_iter=1000)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+scores = cross_val_score(model, X_train_scaled, y_train, cv=cv, scoring='accuracy')
+
+print("Accuracy por fold:", scores)
+print("Accuracy promedio CV:", scores.mean())
+
+# Entrenar modelo final y evaluar en test
+model.fit(X_train_scaled, y_train)
+test_acc = model.score(X_test_scaled, y_test)
+print("Accuracy en test:", test_acc)
+
+"""Como podemos observar, nuestro primer modelo de regresión logística obtiene una precisión media en el conjunto de entrenamiento de aproximadamente 92.8% según la validación cruzada. Al evaluar el modelo final en el conjunto de prueba, la precisión alcanza un 94.7%, lo que indica que el modelo generaliza muy bien y no muestra signos de sobreajuste (memorizacion).
+
+### Analizaremos este resultado calculando la recta ROC, PR y la matriz de confusion:
+"""
+
+# Convertimos y a formato binario (One-hot)
+y_bin = label_binarize(y_test, classes=[0,1,2,3])
+n_classes = y_bin.shape[1]
+
+# Predicciones de probabilidades
+y_score = model.predict_proba(X_test_scaled)  # lista de arrays por clase
+
+# Para cada clase, dibujamos la curva Precision-Recall
+plt.figure(figsize=(8,6))
+for i in range(n_classes):
+    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    pr_auc = auc(recall, precision)
+    plt.plot(recall, precision, label=f'Clase {i} (AUC={pr_auc:.2f})')
+
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Curvas Precision-Recall (Multiclase)')
+plt.legend()
+plt.show()
+
+# Binarizamos las clases
+y_bin = label_binarize(y_test, classes=[0,1,2,3])
+n_classes = y_bin.shape[1]
+
+# Probabilidades predichas por el modelo
+y_score = model.predict_proba(X_test_scaled)
+
+# Dibujar ROC para cada clase
+plt.figure(figsize=(8,6))
+for i in range(n_classes):
+    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=f'Clase {i} (AUC={roc_auc:.2f})')
+
+plt.plot([0,1], [0,1], linestyle='--', color='gray')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Curvas ROC (Multiclase)')
+plt.legend()
+plt.show()
+
+# Usar el modelo entrenado y los datos de prueba correctos
+disp = ConfusionMatrixDisplay.from_estimator(
+    model,
+    X_test_scaled, # Usar datos de prueba ESCALADOS
+    y_test,        # Usar etiquetas de prueba reales
+    cmap=plt.cm.Blues,
+    normalize=None
+)
+
+# Corregir el título a Multiclase
+disp.ax_.set_title("Matriu de Confusió - Regressió Logística (Multiclase)")
+plt.show()
+
+"""Por lo general podemos ver que el modelo de Regresion logistica classifica de forma correcta la mayoria de casos.
+
+### Por ultimo utilizaremos un classification_report para ver mejor la informacion:
+"""
+
+# Generar predicciones de clase
+y_pred_test = model.predict(X_test_scaled)
+
+report_log = classification_report(y_test, y_pred_test)
+print(report_log)
