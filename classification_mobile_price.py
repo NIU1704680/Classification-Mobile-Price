@@ -68,8 +68,10 @@ Por ultimo encontrabos nuestro atribujo objetivo (tarjet), el cual el modelo ten
 """
 
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -125,7 +127,23 @@ plt.xticks(rotation=45, ha="right")
 plt.tight_layout()
 plt.show()
 
-"""## 5. Tratamiento de datos:
+"""### Con el objetivo de identificar qué atributos influyen más en el precio del dispositivo, calculamos la correlación entre la variable price_range y el resto de características del dataset."""
+
+# Correlación de todas las columnas con price_range
+correlation_with_target = train.corr()['price_range'].sort_values(ascending=False)
+
+print(correlation_with_target)
+
+plt.figure(figsize=(8, 10))
+sns.barplot(x=correlation_with_target.values, y=correlation_with_target.index)
+plt.title("Correlación de cada característica con price_range")
+plt.xlabel("Correlación")
+plt.ylabel("Características")
+plt.show()
+
+"""Como se puede observar, el atributo que presenta la mayor relación con la variable price_range es la memoria RAM, mostrando una correlación significativamente superior al resto.
+
+## 5. Tratamiento de datos:
 
 ### Comenzaremos separando el atributo objetivo del resto:
 """
@@ -180,19 +198,30 @@ X_test_scaled = scaler.transform(X_test) # Aplicar la misma transformación al c
 """
 
 # Cross-validation simple
+
+folds = [3, 5, 7, 10]
 model = LogisticRegression(max_iter=1000)
+
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 scores = cross_val_score(model, X_train_scaled, y_train, cv=cv, scoring='accuracy')
 
-print("Accuracy por fold:", scores)
-print("Accuracy promedio CV:", scores.mean())
+for k in folds:
+    cv = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
+    scores = cross_val_score(model, X_train_scaled, y_train, cv=cv, scoring='accuracy')
 
-# Entrenar modelo final y evaluar en test
+    print(f"{k} folds:")
+    print(f"  Accuracy por fold: {scores}")
+    print(f"  Accuracy media: {scores.mean():.4f}\n")
+
+# Entrenamos modelo final
 model.fit(X_train_scaled, y_train)
 test_acc = model.score(X_test_scaled, y_test)
-print("Accuracy en test:", test_acc)
+
+print("Accuracy final en test:", test_acc)
 
 """Como podemos observar, nuestro primer modelo de regresión logística obtiene una precisión media en el conjunto de entrenamiento de aproximadamente 92.8% según la validación cruzada. Al evaluar el modelo final en el conjunto de prueba, la precisión alcanza un 94.7%, lo que indica que el modelo generaliza muy bien y no muestra signos de sobreajuste (memorizacion).
+
+También podemos observar que utilizar 5 folds ofrece un buen equilibrio entre obtener una estimación estable de la accuracy y no incrementar en exceso el número de particiones del conjunto de entrenamiento.
 
 ### Analizaremos este resultado calculando la recta ROC, PR y la matriz de confusion:
 """
@@ -258,6 +287,195 @@ plt.show()
 
 # Generar predicciones de clase
 y_pred_test = model.predict(X_test_scaled)
+
+report_log = classification_report(y_test, y_pred_test)
+print(report_log)
+
+"""## 7. RandomForest
+
+"""
+
+# Número de folds que queremos probar
+folds = [3, 5, 7, 10]
+
+# Modelo Random Forest
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+
+# Cross-validation para cada número de folds
+for k in folds:
+    cv = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
+    scores = cross_val_score(model, X_train_scaled, y_train, cv=cv, scoring='accuracy')
+
+    print(f"{k} folds:")
+    print(f"  Accuracy por fold: {scores}")
+    print(f"  Accuracy media: {scores.mean():.4f}\n")
+
+# Entrenamos modelo final sobre todo el set de entrenamiento
+model.fit(X_train_scaled, y_train)
+test_acc = model.score(X_test_scaled, y_test)
+
+print("Accuracy final en test:", test_acc)
+
+"""Como podemos observar, con 3 folds el modelo obtiene una precisión media de 85.5%, mientras que al aumentar a 5, 7 y 10 folds la precisión media mejora ligeramente, alcanzando aproximadamente 86.2–86.3%. La evaluación final en el conjunto de prueba muestra una precisión de 87.3%, lo que indica que el modelo generaliza correctamente y no presenta sobreajuste.
+
+Además, utilizar un número intermedio de folds, como 5 o 7, ofrece un buen equilibrio entre obtener una estimación estable de la accuracy y no incrementar demasiado el número de particiones del conjunto de entrenamiento.
+
+### Analizaremos este resultado calculando la recta ROC, PR y la matriz de confusion:
+"""
+
+# Convertimos y a formato binario (One-hot)
+y_bin = label_binarize(y_test, classes=[0,1,2,3])
+n_classes = y_bin.shape[1]
+
+# Predicciones de probabilidades
+y_score = model.predict_proba(X_test_scaled)  # lista de arrays por clase
+
+# Para cada clase, dibujamos la curva Precision-Recall
+plt.figure(figsize=(8,6))
+for i in range(n_classes):
+    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    pr_auc = auc(recall, precision)
+    plt.plot(recall, precision, label=f'Clase {i} (AUC={pr_auc:.2f})')
+
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Curvas Precision-Recall (Multiclase)')
+plt.legend()
+plt.show()
+
+# Binarizamos las clases
+y_bin = label_binarize(y_test, classes=[0,1,2,3])
+n_classes = y_bin.shape[1]
+
+# Probabilidades predichas por el modelo
+y_score = model.predict_proba(X_test_scaled)
+
+# Dibujar ROC para cada clase
+plt.figure(figsize=(8,6))
+for i in range(n_classes):
+    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=f'Clase {i} (AUC={roc_auc:.2f})')
+
+plt.plot([0,1], [0,1], linestyle='--', color='gray')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Curvas ROC (Multiclase)')
+plt.legend()
+plt.show()
+
+# Usar el modelo entrenado y los datos de prueba correctos
+disp = ConfusionMatrixDisplay.from_estimator(
+    model,
+    X_test_scaled, # Usar datos de prueba ESCALADOS
+    y_test,        # Usar etiquetas de prueba reales
+    cmap=plt.cm.Blues,
+    normalize=None
+)
+
+# Corregir el título a Multiclase
+disp.ax_.set_title("Matriu de Confusió - Regressió Logística (Multiclase)")
+plt.show()
+
+# Generar predicciones de clase
+y_pred_test = model.predict(X_test_scaled)
+
+report_log = classification_report(y_test, y_pred_test)
+print(report_log)
+
+"""## 8. Gradient Boosting"""
+
+# Número de folds que queremos probar
+folds = [3, 5, 7, 10]
+
+# Modelo Gradient Boosting
+model = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, random_state=42)
+
+# Cross-validation para cada número de folds
+for k in folds:
+    cv = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
+    scores = cross_val_score(model, X_train_scaled, y_train, cv=cv, scoring='accuracy')
+
+    print(f"{k} folds:")
+    print(f"  Accuracy por fold: {scores}")
+    print(f"  Accuracy media: {scores.mean():.4f}\n")
+
+# Entrenamos modelo final sobre todo el set de entrenamiento
+model.fit(X_train_scaled, y_train)
+test_acc = model.score(X_test_scaled, y_test)
+
+print("Accuracy final en test:", test_acc)
+
+"""Como podemos observar, con 3 folds el modelo Gradient Boosting obtiene una precisión media de 86.5%, mientras que al aumentar a 5, 7 y 10 folds la precisión media mejora gradualmente, alcanzando aproximadamente 87.9–88.6%. La evaluación final en el conjunto de prueba muestra una precisión de 91%, lo que indica que el modelo generaliza correctamente y no presenta signos de sobreajuste.
+
+Además, utilizar un número intermedio de folds, como 5 o 7, ofrece un buen equilibrio entre obtener una estimación estable de la accuracy y no incrementar demasiado el número de particiones del conjunto de entrenamiento.
+
+### Analizaremos este resultado calculando la recta ROC, PR y la matriz de confusion:
+"""
+
+# Convertimos y a formato binario (One-hot)
+y_bin = label_binarize(y_test, classes=[0,1,2,3])
+n_classes = y_bin.shape[1]
+
+# Predicciones de probabilidades
+y_score = model.predict_proba(X_test_scaled)  # lista de arrays por clase
+
+# Para cada clase, dibujamos la curva Precision-Recall
+plt.figure(figsize=(8,6))
+for i in range(n_classes):
+    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    pr_auc = auc(recall, precision)
+    plt.plot(recall, precision, label=f'Clase {i} (AUC={pr_auc:.2f})')
+
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Curvas Precision-Recall (Multiclase)')
+plt.legend()
+plt.show()
+
+# Binarizamos las clases
+y_bin = label_binarize(y_test, classes=[0,1,2,3])
+n_classes = y_bin.shape[1]
+
+# Probabilidades predichas por el modelo
+y_score = model.predict_proba(X_test_scaled)
+
+# Dibujar ROC para cada clase
+plt.figure(figsize=(8,6))
+for i in range(n_classes):
+    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    roc_auc = auc(fpr, tpr)
+    plt.plot(fpr, tpr, label=f'Clase {i} (AUC={roc_auc:.2f})')
+
+plt.plot([0,1], [0,1], linestyle='--', color='gray')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Curvas ROC (Multiclase)')
+plt.legend()
+plt.show()
+
+# Usar el modelo entrenado y los datos de prueba correctos
+disp = ConfusionMatrixDisplay.from_estimator(
+    model,
+    X_test_scaled, # Usar datos de prueba ESCALADOS
+    y_test,        # Usar etiquetas de prueba reales
+    cmap=plt.cm.Blues,
+    normalize=None
+)
+
+# Corregir el título a Multiclase
+disp.ax_.set_title("Matriu de Confusió - Regressió Logística (Multiclase)")
+plt.show()
+
+# Generar predicciones de clase
+y_pred_test = model.predict(X_test_scaled)
+
+report_log = classification_report(y_test, y_pred_test)
+print(report_log)
+
+"""## 9. Analisis final
+
+"""
 
 report_log = classification_report(y_test, y_pred_test)
 print(report_log)
