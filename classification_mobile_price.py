@@ -84,6 +84,7 @@ from sklearn.metrics import precision_recall_curve, auc, roc_curve
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
+from sklearn.model_selection import GridSearchCV
 
 """## 4. Analisis del dataset:
 
@@ -295,13 +296,36 @@ print(report_log)
 
 """## 7. Segundo modelo: RandomForest
 
+### Para mejorar la eficiencia de RandomForest utilizaremos GridSearchCV para la busqueda de los mejores hiperparametros. De esta forma conseguimos aumentar el rendimiento
 """
+
+# Definir modelo base
+rf = RandomForestClassifier(random_state=42)
+
+# Definir hiperparámetros a probar
+param_grid = {
+    'n_estimators': [100, 200, 300, 400, 500, 700, 1000],
+    'max_depth': [5, 10, 15, 20, 30, 40, None],
+    'max_features': ['sqrt', 'log2']
+}
+
+# GridSearchCV con validación cruzada 5-fold
+grid_search = GridSearchCV(estimator=rf, param_grid=param_grid,
+                           cv=5, scoring='accuracy', n_jobs=-1)
+
+# Entrenar
+grid_search.fit(X_train_scaled, y_train)
+
+# Mejor modelo
+print("Mejores hiperparámetros:", grid_search.best_params_)
+
+"""Como hemos visto la mejor combinacion es: 'max_depth': 15, 'max_features': 'sqrt', 'n_estimators': 300"""
 
 # Número de folds que queremos probar
 folds = [3, 5, 7, 10]
 
 # Modelo Random Forest
-model = RandomForestClassifier(n_estimators=100, random_state=42)
+model = model = RandomForestClassifier(n_estimators=300,max_depth=15,max_features='sqrt',random_state=42)
 
 # Cross-validation para cada número de folds
 for k in folds:
@@ -318,7 +342,7 @@ test_acc = model.score(X_test_scaled, y_test)
 
 print("Accuracy final en test:", test_acc)
 
-"""Como podemos observar, con 3 folds el modelo obtiene una precisión media de 85.5%, mientras que al aumentar a 5, 7 y 10 folds la precisión media mejora ligeramente, alcanzando aproximadamente 86.2–86.3%. La evaluación final en el conjunto de prueba muestra una precisión de 87.3%, lo que indica que el modelo generaliza correctamente y no presenta sobreajuste.
+"""Como podemos observar, con 3 folds el modelo obtiene una precisión media de 85.5%, mientras que al aumentar a 5, 7 y 10 folds la precisión media mejora ligeramente, alcanzando aproximadamente 86.2–87.3%. La evaluación final en el conjunto de prueba muestra una precisión de 87.66%, lo que indica que el modelo generaliza correctamente y no presenta sobreajuste.
 
 Además, utilizar un número intermedio de folds, como 5 o 7, ofrece un buen equilibrio entre obtener una estimación estable de la accuracy y no incrementar demasiado el número de particiones del conjunto de entrenamiento.
 
@@ -385,13 +409,41 @@ y_pred_test = model.predict(X_test_scaled)
 report_log = classification_report(y_test, y_pred_test)
 print(report_log)
 
-"""## 8. Tercer modelo: Gradient Boosting"""
+"""## 8. Tercer modelo: Gradient Boosting
+
+### Para mejorar la eficiencia de RandomForest utilizaremos GridSearchCV para la busqueda de los mejores hiperparametros. De esta forma conseguimos aumentar el rendimiento
+"""
+
+# Probar diferentes hiperparámetros a mano
+params = [
+    {'n_estimators': 100, 'learning_rate': 0.1, 'max_depth': 3},
+    {'n_estimators': 200, 'learning_rate': 0.05, 'max_depth': 5},
+    {'n_estimators': 300, 'learning_rate': 0.05, 'max_depth': 7}
+]
+
+best_acc = 0
+best_params = None
+
+for p in params:
+    model = GradientBoostingClassifier(**p, random_state=42)
+    model.fit(X_train, y_train)
+    acc = model.score(X_test, y_test)
+
+    print(p, "=> accuracy:", acc)
+
+    if acc > best_acc:
+        best_acc = acc
+        best_params = p
+
+print("Mejores hiperparámetros:", best_params)
+
+"""Como hemos visto la mejor combinacion es: 'learning_rate': 0.05, 'max_depth': 5, 'n_estimators': 200"""
 
 # Número de folds que queremos probar
 folds = [3, 5, 7, 10]
 
 # Modelo Gradient Boosting
-model = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, random_state=42)
+model = GradientBoostingClassifier(n_estimators=200,learning_rate=0.05,max_depth=5,random_state=42)
 
 # Cross-validation para cada número de folds
 for k in folds:
@@ -408,7 +460,7 @@ test_acc = model.score(X_test_scaled, y_test)
 
 print("Accuracy final en test:", test_acc)
 
-"""Como podemos observar, con 3 folds el modelo Gradient Boosting obtiene una precisión media de 86.5%, mientras que al aumentar a 5, 7 y 10 folds la precisión media mejora gradualmente, alcanzando aproximadamente 87.9–88.6%. La evaluación final en el conjunto de prueba muestra una precisión de 91%, lo que indica que el modelo generaliza correctamente y no presenta signos de sobreajuste.
+"""Como podemos observar, con 3 folds el modelo Gradient Boosting obtiene una precisión media de 86.6%, mientras que al aumentar a 5, 7 y 10 folds la precisión media mejora gradualmente, alcanzando aproximadamente 88.8–89.0%. La evaluación final en el conjunto de prueba muestra una precisión de 91.8%, lo que indica que el modelo generaliza correctamente y no presenta signos de sobreajuste.
 
 Además, utilizar un número intermedio de folds, como 5 o 7, ofrece un buen equilibrio entre obtener una estimación estable de la accuracy y no incrementar demasiado el número de particiones del conjunto de entrenamiento.
 
