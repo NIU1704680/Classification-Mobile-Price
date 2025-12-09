@@ -14,6 +14,8 @@ El objetivo de este proyecto es crear un clasificador de precios de teléfonos m
 
 https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification
 
+GITHUB: https://github.com/NIU1704680/Classification-Mobile-Price.git
+
 ## 2. Dataset:
 
 El dataset contiene un total de 21 atributs, explicados a continuacion:
@@ -192,7 +194,7 @@ scaler = RobustScaler()
 X_train_scaled = scaler.fit_transform(X_train) # Ajustar el escalador solo con el conjunto de entrenamiento (el fit sirve para que aprenda parámetros de los datos de train)
 X_test_scaled = scaler.transform(X_test) # Aplicar la misma transformación al conjunto de prueba (Transform solamente)
 
-"""## 6. Primer modelo: LogisticRegression
+"""## 6. Primer modelo: Logistic Regression
 
 ### He decidido elegir como primer modelo la Regression logistica por su sencillez. Para su uso utilizaremos también Cross Validation:
 """
@@ -236,7 +238,7 @@ y_score = model.predict_proba(X_test_scaled)  # lista de arrays por clase
 # Para cada clase, dibujamos la curva Precision-Recall
 plt.figure(figsize=(8,6))
 for i in range(n_classes):
-    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[:, i])
     pr_auc = auc(recall, precision)
     plt.plot(recall, precision, label=f'Clase {i} (AUC={pr_auc:.2f})')
 
@@ -256,7 +258,7 @@ y_score = model.predict_proba(X_test_scaled)
 # Dibujar ROC para cada clase
 plt.figure(figsize=(8,6))
 for i in range(n_classes):
-    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[:, i])
     roc_auc = auc(fpr, tpr)
     plt.plot(fpr, tpr, label=f'Clase {i} (AUC={roc_auc:.2f})')
 
@@ -277,7 +279,7 @@ disp = ConfusionMatrixDisplay.from_estimator(
 )
 
 # Corregir el título a Multiclase
-disp.ax_.set_title("Matriu de Confusió - Regressió Logística (Multiclase)")
+disp.ax_.set_title("Matriz de Confusión - Regressión Logística (Multiclase)")
 plt.show()
 
 """Por lo general podemos ver que el modelo de Regresion logistica classifica de forma correcta la mayoria de casos.
@@ -291,7 +293,7 @@ y_pred_test = model.predict(X_test_scaled)
 report_log = classification_report(y_test, y_pred_test)
 print(report_log)
 
-"""## 7. RandomForest
+"""## 7. Segundo modelo: RandomForest
 
 """
 
@@ -333,7 +335,7 @@ y_score = model.predict_proba(X_test_scaled)  # lista de arrays por clase
 # Para cada clase, dibujamos la curva Precision-Recall
 plt.figure(figsize=(8,6))
 for i in range(n_classes):
-    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[:, i])
     pr_auc = auc(recall, precision)
     plt.plot(recall, precision, label=f'Clase {i} (AUC={pr_auc:.2f})')
 
@@ -353,7 +355,7 @@ y_score = model.predict_proba(X_test_scaled)
 # Dibujar ROC para cada clase
 plt.figure(figsize=(8,6))
 for i in range(n_classes):
-    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[:, i])
     roc_auc = auc(fpr, tpr)
     plt.plot(fpr, tpr, label=f'Clase {i} (AUC={roc_auc:.2f})')
 
@@ -374,7 +376,7 @@ disp = ConfusionMatrixDisplay.from_estimator(
 )
 
 # Corregir el título a Multiclase
-disp.ax_.set_title("Matriu de Confusió - Regressió Logística (Multiclase)")
+disp.ax_.set_title("Matriz de Confusión - Random Forest (Multiclase)")
 plt.show()
 
 # Generar predicciones de clase
@@ -383,7 +385,7 @@ y_pred_test = model.predict(X_test_scaled)
 report_log = classification_report(y_test, y_pred_test)
 print(report_log)
 
-"""## 8. Gradient Boosting"""
+"""## 8. Tercer modelo: Gradient Boosting"""
 
 # Número de folds que queremos probar
 folds = [3, 5, 7, 10]
@@ -423,7 +425,7 @@ y_score = model.predict_proba(X_test_scaled)  # lista de arrays por clase
 # Para cada clase, dibujamos la curva Precision-Recall
 plt.figure(figsize=(8,6))
 for i in range(n_classes):
-    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    precision, recall, _ = precision_recall_curve(y_bin[:, i], y_score[:, i])
     pr_auc = auc(recall, precision)
     plt.plot(recall, precision, label=f'Clase {i} (AUC={pr_auc:.2f})')
 
@@ -443,7 +445,7 @@ y_score = model.predict_proba(X_test_scaled)
 # Dibujar ROC para cada clase
 plt.figure(figsize=(8,6))
 for i in range(n_classes):
-    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[i][:,1] if y_score[i].ndim>1 else y_score[:, i])
+    fpr, tpr, _ = roc_curve(y_bin[:, i], y_score[:, i])
     roc_auc = auc(fpr, tpr)
     plt.plot(fpr, tpr, label=f'Clase {i} (AUC={roc_auc:.2f})')
 
@@ -464,7 +466,7 @@ disp = ConfusionMatrixDisplay.from_estimator(
 )
 
 # Corregir el título a Multiclase
-disp.ax_.set_title("Matriu de Confusió - Regressió Logística (Multiclase)")
+disp.ax_.set_title("Matriz de Confusión - Gradient Boosting (Multiclase)")
 plt.show()
 
 # Generar predicciones de clase
@@ -475,7 +477,24 @@ print(report_log)
 
 """## 9. Analisis final
 
-"""
+### Evaluacion de modelos:
 
-report_log = classification_report(y_test, y_pred_test)
-print(report_log)
+Tras entrenar los tres modelos de clasificación supervisada; Logistic Regression, Random Forest y Gradient Boosting. Para obtener el rendimiento, utilize validación cruzada con 3, 5, 7 y 10 particiones, observándose cómo aumenta la estabilidad de la accuracy al incrementar el número de folds.
+
+- Regresión Logística:
+  - Accuracy media en validación cruzada: 92.8%
+  - Accuracy en test: 94.7%
+  - Explicación: La regresión logística proporciona un rendimiento sorprendentemente elevado dada su simplicidad. El modelo generaliza bien y no presenta síntomas de sobreajuste.
+
+- Random Forest
+  - Accuracy media en validación cruzada: 86.3%
+  - Accuracy en test: 87.3%
+  - Explicación: Aunque su rendimiento es inferior al de la regresión logística, el modelo sigue mostrando buena capacidad de generalización.
+
+- Gradient Boosting
+  - Accuracy media en validación cruzada: 88.6%
+  - Accuracy en test: 91.0%
+  - Explicación: El modelo de Gradient Boosting mejora de forma notable respecto al Random Forest y ofrece un equilibrio sólido entre sesgo y varianza. Su arquitectura secuencial permite capturar relaciones más complejas entre las variables.
+
+La Regresión Logística es el modelo óptimo con una precisión del 94.7%. Su superioridad se debe a que la RAM es la característica más determinante, y la relación entre RAM y el rango de precio es lineal o monótona. Esto permite que el modelo simple capture la esencia del problema de clasificación sin el riesgo de sobreajuste o la complejidad inherente de los modelos basados en árboles.
+"""
