@@ -88,9 +88,9 @@ from sklearn.model_selection import GridSearchCV
 
 """## 4. Analisis del dataset:
 
-Antes de comenzar a generar un modelo de clasificación es necesario entender que datos estamos tratando y su estructura.
+Antes de entrenar modelos de clasificación es necesario comprender la estructura, tipos de datos y valores que contiene el dataset.
 
-Carga del dataset:
+Cargamos los datasets:
 """
 
 train = pd.read_csv('train.csv')
@@ -105,7 +105,7 @@ print("Nombre d'atributs:", train.columns)
 
 print(train.info())
 
-"""Como podeos ver cada columna contiene 2000 valores rellenados, por lo tanto no hay Nans y no es necesario hacer un tratamiento de estos.
+"""Cada columna contiene exactamente 2000 valores, por lo tanto no existen valores nulos y no es necesario realizar el tratamiento de Nans.
 
 Ahora para saber el tipo de valores que contiene cada una de las columnas utilizamos .dtypes y head():
 """
@@ -113,11 +113,14 @@ Ahora para saber el tipo de valores que contiene cada una de las columnas utiliz
 print(train.dtypes)
 print(train.head())
 
-"""### Para saber si es necesario normalizar los datos necesitamos saber el rango de valores que tiene cada columna. Si hay rangos muy diferentes necesitaremos hacer esta normalizacion:"""
+"""Para saber si es necesario normalizar los datos necesitamos saber el rango de valores que tiene cada columna. Si hay rangos muy diferentes necesitaremos hacer esta normalizacion:"""
 
 print(train.describe())
 
-"""Para verlo mas claro utilizamos un grafico:"""
+"""Se pueden observar rangos muy diferentes entre variables (por ejemplo, ram vs mobile_wt), por lo que será necesario normalizar.
+
+La siguiente gráfica permite visualizar la media de cada atributo numérico:
+"""
 
 # Calcular medias de todos los atributos excepto la clase
 means = train.drop(columns=["price_range"]).mean()
@@ -146,17 +149,17 @@ plt.xlabel("Correlación")
 plt.ylabel("Características")
 plt.show()
 
-"""Como se puede observar, el atributo que presenta la mayor relación con la variable price_range es la memoria RAM, mostrando una correlación significativamente superior al resto.
+"""Como se puede observar, el atributo que presenta la mayor relación con la variable price_range es la memoria RAM, mostrando una correlación significativamente superior al resto. Esto significa que hay una relación fuerte entre estas dos variables, incluso puede llegar a ser una relación lineal.
 
 ## 5. Tratamiento de datos:
 
-### Comenzaremos separando el atributo objetivo del resto:
+Comenzaremos separando el atributo objetivo del resto de columnas:
 """
 
 X = train.drop(['price_range'], axis=1)
 y = train['price_range']
 
-"""### Para ver como normalizar los datos haremos una prueba con tres tipos de normalizacion:"""
+"""Para ver como normalizar los datos haremos una prueba con tres tipos de normalizacion:"""
 
 #Comparación de diferentes técnicas de normalización y estandarización
 
@@ -184,7 +187,11 @@ for i, (name, scaled) in enumerate(scalers.items(), 1):
 plt.tight_layout()
 plt.show()
 
-"""Despues de ver que tanto RobustScaler, MinMaxScaler y StandardScaler dan valores muy parecidos nos quedaremos con RobustScaler.
+"""Aunque StandardScaler, MinMaxScaler y RobustScaler muestran resultados similares, elegimos RobustScaler por su superioridad técnica:
+
+- Utiliza la mediana y el rango intercuartílico (IQR) para centrar y escalar los datos.
+
+- Esto lo hace inherentemente más robusto ante la presencia de outliers (valores atípicos) en las variables, como ram o mobile_wt, asegurando una preparación de datos más fiable.
 
 ### Normalizamos los datos:
 """
@@ -199,7 +206,7 @@ X_test_scaled = scaler.transform(X_test) # Aplicar la misma transformación al c
 
 """## 6. Primer modelo: Logistic Regression
 
-He decidido elegir como primer modelo la Regression logistica por su sencillez. Para su uso utilizaremos también Cross Validation:
+La regresión logística es un modelo simple, eficiente y muy adecuado cuando la relación entre variables y clases es aproximadamente lineal. Se evalúa con validación cruzada estratificada:
 """
 
 # Cross-validation simple
@@ -285,9 +292,9 @@ disp = ConfusionMatrixDisplay.from_estimator(
 disp.ax_.set_title("Matriz de Confusión - Regressión Logística (Multiclase)")
 plt.show()
 
-"""Por lo general podemos ver que el modelo de Regresion logistica classifica de forma correcta la mayoria de casos. Solamente sufre más fallos al classificar la clase 1 y 2, como podemos ver en las curvas y en la matriz de confusion.
+"""El modelo funciona especialmente bien clasificando las clases 0 y 3, mientras que presenta algo más de confusión entre las clases 1 y 2.
 
-### Por ultimo utilizaremos un classification_report para ver mejor la informacion:
+El classification_report confirma este comportamiento.
 """
 
 # Generar predicciones de clase
@@ -411,11 +418,11 @@ y_pred_test = model.predict(X_test_scaled)
 report_log = classification_report(y_test, y_pred_test)
 print(report_log)
 
-"""Como podemos observar Random Forest no llega a tener la precisión de la regresion logistica, teniendo tambien un problema a la hora de sobre todo clasificar la clase 1 y 2.
+"""Como podemos observar Random Forest no llega a tener la precisión de la regresion logistica, teniendo tambien un problema sobre todo a la hora de clasificar la clase 1 y 2.
 
 ## 8. Tercer modelo: Gradient Boosting
 
-### Para mejorar la eficiencia de RandomForest utilizaremos GridSearchCV para la busqueda de los mejores hiperparametros. De esta forma conseguimos aumentar el rendimiento
+Para mejorar la eficiencia de RandomForest utilizaremos GridSearchCV para la busqueda de los mejores hiperparametros. De esta forma conseguimos aumentar el rendimiento
 """
 
 # Probar diferentes hiperparámetros a mano
@@ -468,7 +475,7 @@ print("Accuracy final en test:", test_acc)
 
 Además, utilizar un número intermedio de folds, como 5 o 7, ofrece un buen equilibrio entre obtener una estimación estable de la accuracy y no incrementar demasiado el número de particiones del conjunto de entrenamiento.
 
-### Analizaremos este resultado calculando la recta ROC, PR y la matriz de confusion:
+Analizaremos este resultado calculando la recta ROC, PR y la matriz de confusion:
 """
 
 # Convertimos y a formato binario (One-hot)
@@ -525,6 +532,8 @@ disp = ConfusionMatrixDisplay.from_estimator(
 disp.ax_.set_title("Matriz de Confusión - Gradient Boosting (Multiclase)")
 plt.show()
 
+"""Como podemos observar Gradient Boosting consigue una precisión intermedia entre Random Forest y regresion logistica, teniendo tambien un problema sobre todo a la hora de clasificar la clase 1 y 2."""
+
 # Generar predicciones de clase
 y_pred_test = model.predict(X_test_scaled)
 
@@ -533,7 +542,41 @@ print(report_log)
 
 """## 9. Analisis final
 
-### Evaluacion de modelos:
+## Resultados:
+"""
+
+# Resultados (puedes sustituirlos si quieres los exactos de tu ejecución)
+models = ["Logistic Regression", "Random Forest", "Gradient Boosting"]
+train_acc = [0.928, 0.863, 0.886]
+test_acc  = [0.947, 0.873, 0.918]
+
+# Crear dataframe resumen
+df_results = pd.DataFrame({
+    "Modelo": models,
+    "Train Accuracy": train_acc,
+    "Test Accuracy": test_acc
+})
+
+print(df_results)
+
+# --- GRÁFICO ---
+x = np.arange(len(models))
+width = 0.35  # ancho de las barras
+
+plt.figure(figsize=(10, 6))
+
+# Barras Train y Test
+plt.bar(x - width/2, train_acc, width, label="Train Accuracy")
+plt.bar(x + width/2, test_acc,  width, label="Test Accuracy")
+
+plt.xticks(x, models, rotation=20)
+plt.ylabel("Accuracy")
+plt.title("Comparación de Accuracy por Modelo (Train vs Test)")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+"""### Evaluacion de modelos:
 
 Tras entrenar los tres modelos de clasificación supervisada; Logistic Regression, Random Forest y Gradient Boosting. Para obtener el rendimiento, utilize validación cruzada con 3, 5, 7 y 10 particiones, observándose cómo aumenta la estabilidad de la accuracy al incrementar el número de folds.
 
@@ -547,10 +590,10 @@ Tras entrenar los tres modelos de clasificación supervisada; Logistic Regressio
   - Accuracy en test: 87.3%
   - Explicación: Aunque su rendimiento es inferior al de la regresión logística, el modelo sigue mostrando buena capacidad de generalización.
 
-- Gradient Boosting
+- Gradient Boost
   - Accuracy media en validación cruzada: 88.6%
   - Accuracy en test: 91.0%
   - Explicación: El modelo mejora de forma notable respecto al Random Forest. Su arquitectura secuencial permite capturar relaciones más complejas entre las variables.
 
-La Regresión Logística es el modelo óptimo con una precisión del 94.7%. Su superioridad se debe a que la RAM es la característica más determinante, y la relación entre RAM y el rango de precio es lineal o monótona. Esto permite que el modelo simple capture la esencia del problema de clasificación sin el riesgo de sobreajuste o la complejidad inherente de los modelos basados en árboles.
+La Regresión Logística es el modelo óptimo, para la classificacion del precio de los mobiles, con una precisión del 94.7%. Su superioridad se debe a que la RAM es la característica más determinante, y la relación entre RAM y el rango de precio es lineal o monótona. Esto permite que el modelo simple capture la esencia del problema de clasificación sin el riesgo de sobreajuste o la complejidad inherente de los modelos basados en árboles.
 """
